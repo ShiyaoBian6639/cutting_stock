@@ -52,8 +52,14 @@ def get_col(basis, weight, max_len):
 def ratio_test(inv_b, column, demand):
     num = np.inner(inv_b, column)
     den = np.inner(inv_b, demand)
-    ratio = den / (num + np.random.random(len(num)))
-    leaving = np.argmin(ratio)  # x_i should enter in row <leaving>
+    ratio = den / num
+    leaving = -1
+    min_value = np.inf
+    for i in range(len(ratio)):
+        value = ratio[i]
+        if min_value > value > 0:
+            min_value = value
+            leaving = i
     return leaving, num
 
 
@@ -77,11 +83,11 @@ def generate_optimal_column(weight, capacity, demand):
     reduced_cost, column = get_col(inv_b, weight, capacity)
     count = n
     while reduced_cost - 1 > 1e-4:
-        print(reduced_cost)
         leaving, num = ratio_test(inv_b, column, demand)
-        configuration = np.vstack((configuration, column))
-        # configuration[leaving] = column  # update configuration
+        # configuration = np.vstack((configuration, column))
+        configuration[leaving] = column  # update configuration
         mat_e = prod_inv(num, n, leaving)
         inv_b = update_inv_b(mat_e, inv_b)
         reduced_cost, column = get_col(inv_b, weight, capacity)
+        print(reduced_cost)
     return configuration
