@@ -26,6 +26,7 @@ st:
                                        x4 + x5       + x7 >= 15
 """
 import numpy as np
+from knapsack import knapsack
 
 
 def generate_basis(lengths, max_length):
@@ -38,5 +39,49 @@ def generate_basis(lengths, max_length):
     return basis, configuration
 
 
-def generate_column():
-    pass
+def get_col(basis, weight, max_len):
+    value = basis.sum(axis=0)
+    n = len(weight)
+    configuration = np.zeros(n, dtype=int)
+    table = -np.ones(max_len + 1)
+    optimal_conf = np.zeros((max_len + 1, n), dtype=int)
+    reduced_cost, column = knapsack(weight, value, max_len, n, configuration, table, optimal_conf)
+    return reduced_cost, column
+
+
+def ratio_test(inv_b, column, demand):
+    num = np.inner(inv_b, column)
+    den = np.inner(inv_b, demand)
+    ratio = den / (num + np.random.random(len(num)))
+    leaving = np.argmin(ratio)  # x_i should enter in row <leaving>
+    return leaving, num
+
+
+def prod_inv(num, n, r):
+    res = np.eye(n)
+    temp = num[r]
+    ero = - num / temp
+    ero[r] = 1 / temp
+    res[:, r] = ero
+    return res
+
+
+def update_inv_b(mat_e, inv_b):
+    return mat_e.dot(inv_b)
+
+
+def generate_optimal_column(weight, capacity, demand):
+    n = len(weight)
+    # generate initial configuration
+    inv_b, configuration = generate_basis(weight, capacity)
+    reduced_cost, column = get_col(inv_b, weight, capacity)
+    count = n
+    while reduced_cost - 1 > 1e-4:
+        print(reduced_cost)
+        leaving, num = ratio_test(inv_b, column, demand)
+        configuration = np.vstack((configuration, column))
+        # configuration[leaving] = column  # update configuration
+        mat_e = prod_inv(num, n, leaving)
+        inv_b = update_inv_b(mat_e, inv_b)
+        reduced_cost, column = get_col(inv_b, weight, capacity)
+    return configuration

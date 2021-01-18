@@ -1,5 +1,6 @@
 import numpy as np
-from pulp import LpProblem, LpMinimize, LpVariable, LpInteger, lpSum
+from pulp import LpProblem, LpMinimize, LpVariable, LpInteger, lpSum, CPLEX_CMD
+
 
 def generate_all_cutting_configuration(L, lengths):
     res = []
@@ -40,7 +41,18 @@ def conf2mat(configurations, len_dict, lengths):
     return res
 
 
-def covering_model(conf_mat, len_demand, solver):
+def sort_length(length, demand):
+    n = len(length)
+    index = np.argsort(length)
+    length_arr = np.zeros(n, dtype=int)
+    demand_arr = np.zeros(n)
+    for i in range(n):
+        length_arr[i] = length[index[i]]
+        demand_arr[i] = demand[index[i]]
+    return length_arr, demand_arr
+
+
+def covering_model(conf_mat, len_demand):
     """
     :param conf_mat:
     :param len_demand:
@@ -56,4 +68,4 @@ def covering_model(conf_mat, len_demand, solver):
         prob += lpSum(y[i] * conf_mat[i, j] for i in range(num_conf)) >= len_demand[j]
     prob.writeLP("cutting_stock.lp")
 
-    prob.solve()
+    prob.solve(solver=CPLEX_CMD())
