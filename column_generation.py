@@ -27,42 +27,47 @@ st:
 """
 import numpy as np
 from knapsack import knapsack
+from numba import njit, int32, float64
 
 
+@njit()
 def generate_basis(lengths, max_length):
     num_conf = lengths.shape[0]
     basis = np.zeros((num_conf, num_conf))
-    configuration = np.zeros((num_conf, num_conf), dtype=int)
-    diag = (max_length / lengths).astype(int)
+    configuration = np.zeros((num_conf, num_conf), dtype=int32)
+    diag = (max_length / lengths).astype(int32)
     np.fill_diagonal(basis, 1 / diag)
     np.fill_diagonal(configuration, diag)
     return basis, configuration
 
 
+@njit()
 def get_col(basis, weight, max_len):
     value = basis.sum(axis=0)
     n = len(weight)
-    configuration = np.zeros(n, dtype=int)
+    configuration = np.zeros(n, dtype=int32)
     table = -np.ones(max_len + 1)
-    optimal_conf = np.zeros((max_len + 1, n), dtype=int)
+    optimal_conf = np.zeros((max_len + 1, n), dtype=int32)
     reduced_cost, column = knapsack(weight, value, max_len, n, configuration, table, optimal_conf)
     return reduced_cost, column
 
 
+@njit()
 def ratio_test(inv_b, column, demand):
-    num = np.inner(inv_b, column)
-    den = np.inner(inv_b, demand)
-    ratio = den / num
+    aj = inv_b.dot(column.astype(float64))
+    rhs = inv_b.dot(demand)
     leaving = -1
     min_value = np.inf
-    for i in range(len(ratio)):
-        value = ratio[i]
-        if min_value > value > 0:
-            min_value = value
-            leaving = i
-    return leaving, num
+    for i in range(len(aj)):
+        if aj[i] > 0 and rhs[i] > 0:
+            value = rhs[i] / aj[i]
+            if min_value > value:
+                min_value = value
+                leaving = i
+    return leaving, aj
 
 
+@njit()
 def prod_inv(num, n, r):
     res = np.eye(n)
     temp = num[r]
@@ -72,22 +77,23 @@ def prod_inv(num, n, r):
     return res
 
 
+@njit()
 def update_inv_b(mat_e, inv_b):
     return mat_e.dot(inv_b)
 
 
+@njit()
 def generate_optimal_column(weight, capacity, demand):
     n = len(weight)
     # generate initial configuration
     inv_b, configuration = generate_basis(weight, capacity)
     reduced_cost, column = get_col(inv_b, weight, capacity)
-    count = n
+    count = 0
     while reduced_cost - 1 > 1e-4:
+        count += 1
         leaving, num = ratio_test(inv_b, column, demand)
-        # configuration = np.vstack((configuration, column))
         configuration[leaving] = column  # update configuration
         mat_e = prod_inv(num, n, leaving)
         inv_b = update_inv_b(mat_e, inv_b)
         reduced_cost, column = get_col(inv_b, weight, capacity)
-        print(reduced_cost)
-    return configuration
+    return configuration, count

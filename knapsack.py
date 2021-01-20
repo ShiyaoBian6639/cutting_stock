@@ -22,7 +22,6 @@ from numba import njit, int32
 #             break
 #     final_conf[item] += 1
 #     return gain, final_conf
-
 @njit()
 def knapsack(weight, value, capacity, n, configuration, table, optimal_conf):
     if capacity < weight[0]:
@@ -30,7 +29,7 @@ def knapsack(weight, value, capacity, n, configuration, table, optimal_conf):
     if table[capacity] != -1:
         return table[capacity], optimal_conf[capacity]
     gain = 0
-    item = 0
+    item = -1
     final_conf = configuration
     for i in range(n):
         remain = capacity - weight[i]
@@ -43,7 +42,8 @@ def knapsack(weight, value, capacity, n, configuration, table, optimal_conf):
                 final_conf = configuration
         else:
             break
-    final_conf[item] += 1
-    table[capacity] = gain
-    optimal_conf[capacity] = final_conf
+    if item >= 0:
+        final_conf[item] += 1
+        table[capacity] = gain
+        optimal_conf[capacity] = final_conf
     return gain, final_conf
