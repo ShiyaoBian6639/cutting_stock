@@ -3,8 +3,10 @@ from pulp import LpProblem, LpMinimize, LpVariable, LpInteger, lpSum, CPLEX_CMD,
 
 
 def generate_all_cutting_configuration(L, lengths):
+    lengths = sorted(lengths)
     res = []
     add([], L, L, lengths, 0, res)
+    res = [item for item in res if item is not None]
     return res
 
 
@@ -56,7 +58,6 @@ def covering_model(conf_mat, len_demand):
     """
     :param conf_mat:
     :param len_demand:
-    :param solver: CBC, GUROBI, CPLEX, GLPK
     :return:
     """
     num_conf, num_shape = conf_mat.shape
@@ -67,5 +68,12 @@ def covering_model(conf_mat, len_demand):
     for j in range(num_shape):
         prob += lpSum(y[i] * conf_mat[i, j] for i in range(num_conf)) >= len_demand[j]
     prob.writeLP("cutting_stock.lp")
-
     prob.solve()
+    # get variable values
+    res = np.zeros(num_conf, dtype=int)
+    for i in range(num_conf):
+        val = prob.variables()[i].value()
+        if val > 0.9:
+            res[i] = round(val)
+    return res
+
