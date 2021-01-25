@@ -69,6 +69,12 @@ def ratio_test(inv_b, column, demand):
 
 @njit()
 def prod_inv(num, n, r):
+    """
+    :param num: new column
+    :param n: number of elements in num
+    :param r: pivot
+    :return: E (to be multiplied with B^{-1})
+    """
     res = np.eye(n)
     temp = num[r]
     ero = - num / temp
